@@ -10,12 +10,14 @@
 #include "sched.h"
 #include "schedproc.h"
 #include <assert.h>
+#include <stdio.h>
 #include <minix/com.h>
 #include <machine/archtypes.h>
 
 static unsigned balance_timeout;
 
 #define BALANCE_TIMEOUT	5 /* how often to balance queues in seconds */
+#define CRISTIANO_RONALDO 5
 
 static int schedule_process(struct schedproc * rmp, unsigned flags);
 
@@ -97,7 +99,10 @@ int do_noquantum(message *m_ptr)
 
 	rmp = &schedproc[proc_nr_n];
 	if (rmp->priority < MIN_USER_Q) {
-		rmp->priority += 1; /* lower priority */
+		rmp->used_quantums++;
+		if (rmp->used_quantums % CRISTIANO_RONALDO == 0) {
+			rmp->priority += 1; /* lower priority */
+		}
 	}
 
 	if ((rv = schedule_process_local(rmp)) != OK) {
@@ -158,9 +163,10 @@ int do_start_scheduling(message *m_ptr)
 	rmp = &schedproc[proc_nr_n];
 
 	/* Populate process slot */
-	rmp->endpoint     = m_ptr->m_lsys_sched_scheduling_start.endpoint;
-	rmp->parent       = m_ptr->m_lsys_sched_scheduling_start.parent;
-	rmp->max_priority = m_ptr->m_lsys_sched_scheduling_start.maxprio;
+	rmp->endpoint      = m_ptr->m_lsys_sched_scheduling_start.endpoint;
+	rmp->parent        = m_ptr->m_lsys_sched_scheduling_start.parent;
+	rmp->max_priority  = m_ptr->m_lsys_sched_scheduling_start.maxprio;
+	rmp->used_quantums = 0;
 	if (rmp->max_priority >= NR_SCHED_QUEUES) {
 		return EINVAL;
 	}
@@ -361,6 +367,12 @@ void balance_queues(void)
 				rmp->priority -= 1; /* increase priority */
 				schedule_process_local(rmp);
 			}
+
+			if (rmp->used_quantums == 0 && rmp->priority > rmp->max_priority) {
+				rmp->priority -= 1;
+			}
+
+			rmp->used_quantums = 0;
 		}
 	}
 

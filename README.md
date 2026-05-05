@@ -7,22 +7,22 @@ Jorge Julio de Leon Masson C212
 **RICHARD**
 
 El emulador que use fue Qemu 10.2.2 usado porque mi computadora es ARM y 
-Minix 3.4.0 requiere x86, VirtuaBox no se us√≥ xq este solo virtualiza
+Minix 3.4.0 requiere x86, VirtuaBox no se us?? xq este solo virtualiza
 
 2GB de RAM Suficiente para compilar sin lentitud, sin desperdiciar recursos del 
 host
-1 n√∫cleo de CPU MINIX no requiere m√°s; emular m√∫ltiples n√∫cleos en QEMU/ARM 
-a√±ade sobrecarga
-20GB de disco duro Eepacio suficiente para c√≥digo fuente y compilaciones; 
-formato din√°mico ahorra espacio en el host
-IPv4 only con DHCP y redirecci√≥n de pueros (SSH en puerto 7722) modo usuario 
+1 n??cleo de CPU MINIX no requiere m??s; emular m??ltiples n??cleos en QEMU/ARM 
+a??ade sobrecarga
+20GB de disco duro Eepacio suficiente para c??digo fuente y compilaciones; 
+formato din??mico ahorra espacio en el host
+IPv4 only con DHCP y redirecci??n de pueros (SSH en puerto 7722) modo usuario 
 simple, evita problemas de IPv6 en MINIX 3
 
-El 1er emulador que use fue UTM pero no reconooc√≠a la ISO por problemas de 
-compatibiliad por lo cual cambii√© a Qemu
-QEMU di√≥ error "file driver requires regular file" por punto en la ruta 
-(richarda.) por lo cual mov√≠ los archivos a ~/minix_vm y usar rutas relativas
-Error de SSL al hacer git push se arregl√≥ desabilitandoverificaci√≥n SSL con 
+El 1er emulador que use fue UTM pero no reconooc??a la ISO por problemas de 
+compatibiliad por lo cual cambii?? a Qemu
+QEMU di?? error "file driver requires regular file" por punto en la ruta 
+(richarda.) por lo cual mov?? los archivos a ~/minix_vm y usar rutas relativas
+Error de SSL al hacer git push se arregl?? desabilitandoverificaci??n SSL con 
 git config --global http.sslVerify false 
 
 Herramientas adicionales instaladas
@@ -79,45 +79,45 @@ comando:
 Me pidio que usara 'onestart' en lugar de 'start'.
 
 Al intentar conectarme por ssh con normalidad tuve otro problema, y es que al intentar entrar por root
-me fallaba la autenticacion, me decia q la contrasena root era incorrecta. Despues de unos cuantos intentos
-de romperme la cabeza se me ocurrio intentarlo por el usuario alternativo que me habia creado al crear la vm, 
+me fallaba la autenticaciÛn, me decÌa q la contraseÒa root era incorrecta. Despues de unos cuantos intentos
+de romperme la cabeza se me ocurriÛ intentarlo por el usuario alternativo que me habia creado al crear la vm, 
 y entonces me dejo entrar.
 
 ![Welcome message picture](assets/welcome.png)
 
 
-### 2.3. Depuraci√≥n de un bug en pthread
+### 2.3. DepuraciÛn de un bug en pthread
 
 
-1. S√≠ntomas
-Al ejecutar el programa de prueba proporcionado por el profesor, se observ√≥ el siguiente comportamiento an√≥malo:
+1. S??ntomas
+Al ejecutar el programa de prueba proporcionado por el profesor, se observ?? el siguiente comportamiento an??malo:
 
-La primera llamada a pthread_mutex_trylock retornaba 0 (OK), indicando que el mutex se hab√≠a bloqueado correctamente.
+La primera llamada a pthread_mutex_trylock retornaba 0 (OK), indicando que el mutex se hab??a bloqueado correctamente.
 La segunda llamada a pthread_mutex_trylock (realizada por el mismo hilo) no retornaba nunca. El programa se quedaba congelado, sin mostrar los mensajes siguientes (unlock, destroy, PASS), y el 
-prompt de MINIX no volv√≠a a aparecer hasta que se forzaba la interrupci√≥n con Ctrl + C.
+prompt de MINIX no volv??a a aparecer hasta que se forzaba la interrupci??n con Ctrl + C.
 
-2. Ana√°lisis
-En MINIX, las funciones de hilos se dividen en dos capas. Por un lado, la capa de compatibilidad (archivo libmthread/pthread_compat.c) provee las funciones est√°ndar pthread_* que los 
-programadores utilizan. Por otro lado, la implementaci√≥n nativa (archivo libmthread/mutex.c) provee las funciones reales mthread_* que manejan los mutex a bajo nivel. La capa de compatibilidad 
-act√∫a como un traductor: cada funci√≥n pthread_* deber√≠a llamar a su equivalente mthread_*.
+2. Ana??lisis
+En MINIX, las funciones de hilos se dividen en dos capas. Por un lado, la capa de compatibilidad (archivo libmthread/pthread_compat.c) provee las funciones est??ndar pthread_* que los 
+programadores utilizan. Por otro lado, la implementaci??n nativa (archivo libmthread/mutex.c) provee las funciones reales mthread_* que manejan los mutex a bajo nivel. La capa de compatibilidad 
+act??a como un traductor: cada funci??n pthread_* deber??a llamar a su equivalente mthread_*.
 
-Al inspeccionar pthread_compat.c, se localiz√≥ la funci√≥n pthread_mutex_trylock y se encontr√≥ el siguiente c√≥digo: return pthread_mutex_trylock(mutex);
+Al inspeccionar pthread_compat.c, se localiz?? la funci??n pthread_mutex_trylock y se encontr?? el siguiente c??digo: return pthread_mutex_trylock(mutex);
 
-El problema es que la funci√≥n se llama a s√≠ misma recursivamente en lugar de llamar a mthread_mutex_trylock. Esto es un error tipogr√°fico
+El problema es que la funci??n se llama a s?? misma recursivamente en lugar de llamar a mthread_mutex_trylock. Esto es un error tipogr??fico
 
-3. Correc√i√≥n
-La soluci√≥n es m√≠nima: cambiar la llamada recursiva por la llamada a la funci√≥n nativa.
+3. Correc?i??n
+La soluci??n es m??nima: cambiar la llamada recursiva por la llamada a la funci??n nativa.
 Cambiar return pthread_mutex_trylock(mutex); por return mthread_mutex_trylock(mutex);
 
-4. Verificaci√≥n
-Despu√©s de aplicar la correcci√≥n, se recompil√≥ la librer√≠a y se ejecut√≥ nuevamente el programa de prueba.
-Soluci√≥n obtenid:
+4. Verificaci??n
+Despu??s de aplicar la correcci??n, se recompil?? la librer??a y se ejecut?? nuevamente el programa de prueba.
+Soluci??n obtenid:
 first trylock: 0 (OK)
 second trylock: 11 (Resource deadlock avoided)
 unlock: 0 (OK)
 destroy: 0 (OK)
 PASS
-El programa ya no se congela. La segunda llamada retorna el c√≥digo de error esperadoy el programa contin√∫a ejecutando unlock, destroy y finalmente imprime PASS.
+El programa ya no se congela. La segunda llamada retorna el c??digo de error esperadoy el programa contin??a ejecutando unlock, destroy y finalmente imprime PASS.
 
 ### 2.4. Implementacion del comando tree
 
@@ -155,7 +155,8 @@ int main(const int argc, char *argv[]) {
 ```
 
 Se manejan como posibles argumentos :
---depth, -d para la profundidad de la recursion, la cual se maneja en una variable estatica dentro del archivo y sirve como un break extra
+--depth, -d para la profundidad de la recursion, la cual se maneja en una variable 
+est·tica dentro del archivo y sirve como un break extra
 
 ```c
 static long maxDepth = -1; //-1 significa sin profundidad establecida
@@ -177,8 +178,8 @@ void tree(...){
 ![Help usage](assets/tree_usage_2.png)
 
 
-el manejo de los argumentos se realiza en una funcion aparte que retorna un entero que se interpreta en el switch mediante una codificacion implementada para interpretar
-las configuraciones, mientras que -1*$code equivaldria a un error en el uso de esa opcion:
+el manejo de los argumentos se realiza en una funcion aparte que retorna un entero que se interpreta en el switch mediante una codificaciÛn implementada para interpretar
+las configuraciones, mientras que -1*$code equivaldrÌa a un error en el uso de esa opciÛn:
 
 ```c
 int argParse(const char *firstArg, const char *secondArg) {
@@ -216,3 +217,154 @@ En el metodo se realizan comparaciones pertinentes para retornar un codigo enten
 
 Ejemplo de uso:
 ![Usage](assets/tree_usage_3.png)
+
+
+### 2.5. Penalizacion por uso intensivo de CPU
+
+##### 1. Analisis previo
+El archivo donde se realiza la gestion del agotamiento de quantum es en el main.c, dentro de la funcion main, 
+la cual corre un bucle "while" infinitamente q se encarga de la gestion de los procesos, al recibir el proceso,
+dentro de este se extrae informaciÛn relevante y salta a un switch, donde uno de los casos es 
+```case SCHEDULING_NO_QUANTUM:``` el cual llama a la funcion do_notquantum q se encarga de rebajar la prioridad
+al proceso.
+
+Los datos de planificaciÛn se encuentran en el archivo schedproc.h, un header que define el struct schedproc, 
+el cual agrupa la informaciÛn relevante que necesita almacenar la entrada de un proceso para ser trabajada por
+el scheduler.
+
+Las funciones ```do_noquantum, balance_queues, do_start_scheduling y do_stop_scheduling...``` se definen en 
+schedule.c, todas reciben un puntero que apunta al proceso gestionado, e influyen directamente sobre el 
+struct y sus caracterÌsticas y, por tanto, influyendo en la forma en que es tratado en el main, adem·s
+de algunas como ```do_start_scheduling``` que registra un proceso en la tabla y ```do_stop_scheduling```
+libera su slot.
+
+La prioridad se maneja en el struct, mediante la variable ```priority```, la prioridad maxima igualmente en la 
+variable ```max_priority``` y el quantum asignado esta en ```time_slice```
+
+##### $ Comportamiento previo a los cambios en el scheduler
+En este paso implementaremos dos programas de prueba y analizaremos su comportamiento sobre la implementacion
+de scheduling original de minix.
+
+Para ello se implementaron y probaron dos programas con una logica casi idÈntica, un for que ejecuta
+mil millones de iteraciones, con un if dentro que chequea cuando se supera el millÛn de iteraciones.
+TambiÈn en uno de ellos metimos dentro del if, un fragmento para imprimir un punto, y asi crear una 
+llamada de I/O antes de completar el consumo del quantum (medÌ con otro programa y puedo asegurar que en mi 
+m·quina virtual un millÛn de iteraciones se ejecutan en menos de 200ms, 50M de iteraciones consumen poco
+m·s de 1 segundo)
+
+Tendremos en cuenta los tiempos m·ximos de quantum (200ms) y balanceo (5s) definidos en schedule.c:
+
+```c++
+#include <stdio.h>
+#include <time.h>
+
+#define TOTAL_ITERS  1000000000LL
+#define PRINT_EVERY  1000000LL
+
+int main(void)
+{
+    long long iter;
+    clock_t start, end;
+
+    start = clock();
+
+    for (iter = 1; iter <= TOTAL_ITERS; iter++) {
+        if (iter % PRINT_EVERY == 0) {
+            printf(".");    // lineas que varian entre 
+            fflush(stdout); // uno y otro programa
+        }
+    }
+
+    end = clock();
+    double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+
+    printf("\n1e9 iteraciones completadas.\n");
+    printf("Tiempo total: %.4f segundos\n", elapsed);
+
+    return 0;
+}
+
+```
+
+Al ejecutar el programa tuve un problema, y es que el mÈtodo con I/O me estaba dando un tiempo mayor,
+lo cual me extraÒÛ porque no deberÌa pasar, asi que considere el hecho de que estaba trabajando desde la
+terminal de mi propio sistema por ssh, por lo cual entre desde la vm de minix y los tiempos dieron lo que 
+deberÌan.
+
+Para el programa sin I/O, las mil millones de iteraciones se completaron en 26.1 segundos, mientras que en 
+el otro caso, el tiempo fue de 25.86 segundos, inferior a pesar de que tiene operaciones extra, por lo cual 
+se puede apreciar la influencia que tiene la liberaciÛn de cpu antes de consumir todo el quantum por parte del
+que bloquea para hacer I/O.
+
+##### 2. ModificaciÛn del scheduler
+
+Comenzamos modificando el ```struct schedproc``` para agregar un nuevo campo ```unsigned used_quantums;```
+para llevar la cuenta de qu·ntums consumidos por el proceso, el mismo se inicializa en 0 en la funcion
+```do_start_scheduling```.
+
+Dentro de ```schedule.c```, definimos el macro ```MAX_PROC_Q``` para llevar la cuenta de la maxima cantidad de qu·ntums
+a consumir antes de rebajar la prioridad del proceso.
+
+Despues comenzamos con la implementacion de la nueva logica de manejo de prioridad, para la cual en ampliamos 
+la condicional dentro de ```do_noquantum``` que chequea que un proceso no entre por debajo de su prioridad
+minima, cambi·ndolo por esto:
+
+```c++
+if (rmp->priority < MIN_USER_Q) { // checamos no descender por debajo de la prioridad minima
+	if (rmp->used_quantums < MAX_PROC_Q) { // aumentamos el contador de quantums si estamos por debajo 
+		rmp->used_quantums++;
+	}
+	else { // de lo contrario bajamos prioridad y reiniciamos contador
+		rmp->priority += 1;/
+		rmp->used_quantums = 0;
+	}
+}
+```
+
+Ahora checamos si se consumieron todos los qu·ntums, si no pues se aumenta, de lo contrario disminuimos la 
+prioridad y reiniciamos el contador.
+
+Ya que existe logica de balanceo implementada, lo que hicimos fue agregar una linea en la cual se reinicia
+el contador de quantums al efectuar un balanceo:
+
+```c++
+if (rmp->flags & IN_USE) {
+	if (rmp->priority > rmp->max_priority) { // logica original de recuoeracion de prioridad
+		rmp->priority -= 1;
+		schedule_process_local(rmp);
+	}
+	
+	rmp->used_quantums = 0; // reiniciamos contador
+}
+```
+
+Mas adelante formulamos una mejora en las anteriores para la restauraciÛn gradual de prioridad en caso de 
+no consumir qu·ntums completos en una ventana. Transformamos ```MAX_PROC_Q``` en ```CRISTIANO_RONALDO```
+(no se me ocurrÌa que  ponerle asi que le puse como el bicho siuuuuu), para q ahora el contador de quantums no
+se reinicie al degradar la prioridad en caso de consumo excesivo, sino q la prioridad se degrade al alcanzar un valor 
+en el contador divisible por ```CRISTIANO_RONALDO```, y de esta forma podemos checar en la funcion de balance
+si el contador de quantums llego limpio, y en ese caso se le da una mejora extra a su prioridad, siempre checando
+no sobrepasar la maxima. Tras ello, entonces se reinicia el contador de quantums.
+
+```c++
+if (rmp->priority < MIN_USER_Q) {
+	rmp->used_quantums++;
+	if (rmp->used_quantums % CRISTIANO_RONALDO == 0) {
+		rmp->priority += 1;
+	}
+}
+```
+
+De esta forma siempre se reduce la prioridad al consumir la cantidad especifica de quantums, 
+sin reiniciar el contador
+
+```c++
+if (rmp->used_quantums == 0 && rmp->priority > rmp->max_priority) {
+	rmp->priority -= 1;
+}
+
+rmp->used_quantums = 0;
+```
+
+AquÌ mantenemos la logica original de balance, y agregamos el caso especÌfico que se propone en el documento
+de orientacion del proyecto.
