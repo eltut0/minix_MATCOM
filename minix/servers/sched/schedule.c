@@ -17,7 +17,7 @@
 static unsigned balance_timeout;
 
 #define BALANCE_TIMEOUT	5 /* how often to balance queues in seconds */
-#define CRISTIANO_RONALDO 5
+#define CRISTIANO_RONALDO 3
 
 static int schedule_process(struct schedproc * rmp, unsigned flags);
 
@@ -98,8 +98,8 @@ int do_noquantum(message *m_ptr)
 	}
 
 	rmp = &schedproc[proc_nr_n];
+	rmp->used_quantums++;
 	if (rmp->priority < MIN_USER_Q) {
-		rmp->used_quantums++;
 		if (rmp->used_quantums % CRISTIANO_RONALDO == 0) {
 			rmp->priority += 1; /* lower priority */
 		}
@@ -365,11 +365,10 @@ void balance_queues(void)
 		if (rmp->flags & IN_USE) {
 			if (rmp->priority > rmp->max_priority) {
 				rmp->priority -= 1; /* increase priority */
+				if (rmp->used_quantums == 0 && rmp->priority > rmp->max_priority) {
+					rmp->priority -= 1;
+				}
 				schedule_process_local(rmp);
-			}
-
-			if (rmp->used_quantums == 0 && rmp->priority > rmp->max_priority) {
-				rmp->priority -= 1;
 			}
 
 			rmp->used_quantums = 0;
