@@ -312,8 +312,10 @@ static int schedule_process(struct schedproc * rmp, unsigned flags)
 	else
 		new_prio = -1;
 
-	if (flags & SCHEDULE_CHANGE_QUANTUM)
-		new_quantum = rmp->time_slice;
+	if (flags & SCHEDULE_CHANGE_QUANTUM) {
+		float factor = (float)rmp->max_priority/(float)rmp->priority;
+		new_quantum = DEFAULT_USER_TIME_SLICE*factor > 75 ? DEFAULT_USER_TIME_SLICE*factor : 75;
+	}
 	else
 		new_quantum = -1;
 
