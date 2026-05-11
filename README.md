@@ -241,61 +241,6 @@ libera su slot.
 La prioridad se maneja en el struct, mediante la variable ```priority```, la prioridad maxima igualmente en la 
 variable ```max_priority``` y el quantum asignado esta en ```time_slice```
 
-##### $ Comportamiento previo a los cambios en el scheduler
-En este paso implementaremos dos programas de prueba y analizaremos su comportamiento sobre la implementacion
-de scheduling original de minix.
-
-Para ello se implementaron y probaron dos programas con una logica casi idéntica, un for que ejecuta
-mil millones de iteraciones, con un if dentro que chequea cuando se supera el millón de iteraciones.
-También en uno de ellos metimos dentro del if, un fragmento para imprimir un punto, y asi crear una 
-llamada de I/O antes de completar el consumo del quantum (medí con otro programa y puedo asegurar que en mi 
-máquina virtual un millón de iteraciones se ejecutan en menos de 200ms, 50M de iteraciones consumen poco
-más de 1 segundo)
-
-Tendremos en cuenta los tiempos máximos de quantum (200ms) y balanceo (5s) definidos en schedule.c:
-
-```c++
-#include <stdio.h>
-#include <time.h>
-
-#define TOTAL_ITERS  1000000000LL
-#define PRINT_EVERY  1000000LL
-
-int main(void)
-{
-    long long iter;
-    clock_t start, end;
-
-    start = clock();
-
-    for (iter = 1; iter <= TOTAL_ITERS; iter++) {
-        if (iter % PRINT_EVERY == 0) {
-            printf(".");    // lineas que varian entre 
-            fflush(stdout); // uno y otro programa
-        }
-    }
-
-    end = clock();
-    double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
-
-    printf("\n1e9 iteraciones completadas.\n");
-    printf("Tiempo total: %.4f segundos\n", elapsed);
-
-    return 0;
-}
-
-```
-
-Al ejecutar el programa tuve un problema, y es que el método con I/O me estaba dando un tiempo mayor,
-lo cual me extrañó porque no debería pasar, asi que considere el hecho de que estaba trabajando desde la
-terminal de mi propio sistema por ssh, por lo cual entre desde la vm de minix y los tiempos dieron lo que 
-deberían.
-
-Para el programa sin I/O, las mil millones de iteraciones se completaron en 26.1 segundos, mientras que en 
-el otro caso, el tiempo fue de 25.86 segundos, inferior a pesar de que tiene operaciones extra, por lo cual 
-se puede apreciar la influencia que tiene la liberación de cpu antes de consumir todo el quantum por parte del
-que bloquea para hacer I/O.
-
 ##### 2. Modificación del scheduler
 
 Comenzamos modificando el ```struct schedproc``` para agregar un nuevo campo ```unsigned used_quantums;```
@@ -368,3 +313,60 @@ rmp->used_quantums = 0;
 
 Aquí mantenemos la logica original de balance, y agregamos el caso específico que se propone en el documento
 de orientacion del proyecto.
+
+Una ultima mejora que agregamos fue hacer variable el tamano del quantum, una vez que se re-ajenda un proceso, agregamos
+una fraccion del valor de ```DEFAULT_USER_TIME_SLICE``` basada en su nivel, siempre respetando un valor minimo, de esta forma 
+lo q logramos es equilibrar la mejora del contador de quantums, si un proceso consume mas quantum del necesario una vez por
+alguna razon, no necesariamente ha de bajar de prioridad, pero el que si lo haga recurrentemente ademas de bajar de prioridad,
+recibira menos quantum permitiendo que los procesos en colas bajas se repartan el procesador con una mayor frecuencia. Para ello
+se decidio asignar como valor de quantum el equivalente a Prioridad_Maxima/Prioridad_actual* DEFAULT_USER_TIME_SLICE > 75?? valor_calculado : 75,
+fijando ese valor minimo logramos evadir una de las advertencias que se hacen en el libro acerca de Round Robin, donde un
+quantum muy bajo podria hacer que se gaste mucho procesador en carga de recursos dejando un margen bajo para adelantar el proceso.
+
+Para obtener este resultado se modifico la funcion ```schedule_process``` en el bloque que asigna un nuevo proceso en la
+condicional donde se asigna el quantum al proceso:
+
+```c++
+if (flags & SCHEDULE_CHANGE_QUANTUM) {
+	float factor = (float)rmp->max_priority/(float)rmp->priority;
+	new_quantum = DEFAULT_USER_TIME_SLICE*factor > 75 ? DEFAULT_USER_TIME_SLICE*factor : 75;
+}
+```
+
+##### 3. Analisis posterior a la modificacion del scheduler
+
+Para validar el impacto de estos cambios sobre el sistema, tomamos dos programas y los probamos en dos escenarios. Se ha de 
+tener en cuenta de que para los datos, ya estaba en uso el tema del contador de quantums para el descenso de prioridad.
+
+El primer programa es un mero ```bucle que ejecuta 40B de iteraciones```, en este buscaremos analizar su descenso de prioridad,
+y si existe una mejora o un descenso en los tiempos de ejecucion:
+
+Antes:
+El programa durante su ejecucion descendio hasta la prioridad 15 (rastreado en tiempo real mediante el programa top), y tuvo un tiempo
+de ejecucion en mi vm de 33.4 segundos.
+
+Para la segunda prueba de este mismo programa se combino con un while(True) para ver en cuanto afecta los tiempos la competencia
+directa contra otro proceso cpu bound. Los procesos se ejecutarion en paralelo haciendo 
+```bash
+minix# process_1 & process_2
+```
+
+El programa descendio a su prioridad 15 igualmente, y su tiempo fue de 72.2667s.
+
+Despues:
+El resultado para la ejecucion regular en cuanto a tiempo fue de 34.23s, y para la combinacion con el while true fue de
+76.1s, más lento que el original. Aunque el proceso tenga vía libre respecto a otros procesos, los quantums más cortos 
+implican mayor frecuencia de cambios de contexto, lo que añade overhead. 
+
+Para el segundo programa veremos que tal funciona el sistema de recuperacion de quantum, para ello crearemos un ```bucle
+que hara al proceso descender a lo mas profundo, y al detenerse, el programa hara una peticion de I/O```, de esta forma liberara 
+cpu y no consumira quantums, poniendo a prueba el boost aplicado a la funcion de balanceo. 
+
+Claramente fue sencillo darse cuenta en este caso que la recuperacion de nivel una vez que se llego la peticion de input, 
+fue dos veces mas rapida, ya que nuestra configuracion hace que este proceso aproveche el boost, y cada 5 segundos que 
+ocurre el balanceo, recupera dos niveles en lugar de 1.
+
+Una perspectiva general de nuestra modificacion al scheduler de minix, es que el nuestra implementacion es mas permisivo a la
+hora de castigar procesos, se ve mediante el contador y el numero de quantums a consumir para penalizar, sin embargo a la vez es
+bastante severo reduciendo la cantidad de quantum asignado a procesos, y tambien permite a procesos una redencion acelerada
+mediante el boost extra en el balanceo.
