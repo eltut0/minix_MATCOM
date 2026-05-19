@@ -100,7 +100,7 @@ second trylock: 11 (Resource deadlock avoided)
 unlock: 0 (OK)
 destroy: 0 (OK)
 PASS
-El programa ya no se congela. La segunda llamada retorna el código de error esperadoy el programa continúa ejecutando unlock, destroy y finalmente imprime PASS.
+El programa ya no se congela. La segunda llamada retorna el código de error esperado el programa continúa ejecutando unlock, destroy y finalmente imprime PASS.
 
 ### 2.4. Implementacion del comando tree
 
@@ -370,15 +370,15 @@ A continuación se resume el estado final de cada componente del proyecto:
 
 | Componente | Estado | Observaciones |
 |------------|--------|---------------|
-| Instalación y configuración de MINIX | â Funciona completamente | Se logró emular 
+| Instalación y configuración de MINIX | Funciona completamente | Se logró emular 
 MINIX 3.4.0 sobre QEMU en arquitectura ARM |
-| Personalización del mensaje de bienvenida | â Funciona completamente | El mensaje se 
+| Personalización del mensaje de bienvenida | Funciona completamente | El mensaje se 
 muestra correctamente al iniciar sesión |
-| Depuración del bug en `pthread_mutex_trylock` | â Funciona completamente | El 
+| Depuración del bug en `pthread_mutex_trylock` | Funciona completamente | El 
 programa de prueba retorna `EDEADLK` (11) y finaliza con `PASS` |
-| Implementación del comando `tree` | â Funciona completamente | Muestra la jerarquÃ­a 
+| Implementación del comando `tree` | Funciona completamente | Muestra la jerarquÃ­a 
 de directorios con opciones `-d`, `--depth` y `--help` |
-| Penalización por uso intensivo de CPU | â Funciona según lo esperado | Los procesos 
+| Penalización por uso intensivo de CPU | Funciona según lo esperado | Los procesos 
 CPU-bound ven reducida su prioridad tras consumir mÃºltiples quantums |
 
 Las principales dificultades encontradas estuvieron relacionadas con la autenticación en 
