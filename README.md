@@ -2,6 +2,26 @@
 Richard Alejandro Reyes Gracia C212
 Jorge Julio de Leon Masson C212
 
+# 1. Introducción
+
+El presente proyecto se enmarca en la asignatura Sistemas Operativos de la Facultad de 
+Matemática y Computación de la Universidad de La Habana. Su objetivo principal es explorar 
+y modificar componentes internos del sistema operativo MINIX 3, una plataforma educativa 
+ampliamente utilizada para el estudio de sistemas operativos por su código abierto y su 
+arquitectura de microkernel.
+
+El trabajo se organizó en cuatro actividades fundamentales: personalización del mensaje de 
+bienvenida del sistema, depuración de un bug en la implementación de 
+`pthread_mutex_trylock`, implementación del comando `tree` para visualizar la estructura de 
+directorios, y modificación del planificador de procesos para penalizar aquellos con uso 
+intensivo de CPU (CPU-bound).
+
+A través de estas tareas, se buscó comprender en profundidad mecanismos clave como la 
+concurrencia mediante mutex, el acceso al sistema de archivos mediante llamadas al sistema, 
+y la planificación de procesos con prioridades dinámicas. El presente informe documenta el 
+proceso de trabajo, las dificultades encontradas y los resultados obtenidos en cada 
+componente.
+
 # 2. Desarrollo y resultados por componentes
 ### 2.1. Instalacion y configuracion de minix
 **RICHARD**
@@ -59,8 +79,6 @@ y me cree otro usuario.
 
 
 ### 2.2. Personalizacion del mensaje de bienvenida
-
-**JORGE**
 
 En mi caso tuve algunos problemas, ya que a la hora de hacer un push con git, es necesario agregar un 
 token de verificacion, y como no se permite, o al menos no conozco como compartir portapapeles entre 
@@ -221,7 +239,19 @@ Ejemplo de uso:
 
 ### 2.5. Penalizacion por uso intensivo de CPU
 
-##### 1. Analisis previo
+##### 1. Analisis teórico
+El planificador original de MINIX 3 utiliza colas multinivel con prioridades fijas y 
+envejecimiento (aging). Cada proceso tiene una prioridad numérica: los valores más bajos 
+indican mayor prioridad. Los procesos interactivos suelen tener prioridad alta, mientras que 
+los procesos CPU-bound son penalizados progresivamente.
+
+Cuando un proceso agota su quantum, la función do_noquantum reduce su prioridad en una 
+unidad, permitiendo que otros procesos ejecuten. Cada 5 segundos, balance_queues restaura la 
+prioridad de los procesos penalizados hasta su valor máximo original (max_priority). En 
+este esquema, la penalización y recuperación dependen únicamente del consumo del quantum 
+y del balanceo periódico, sin considerar otras métricas como la cantidad de quantums 
+consumidos antes de una operación de E/S.
+ 
 El archivo donde se realiza la gestion del agotamiento de quantum es en el main.c, dentro de la funcion main, 
 la cual corre un bucle "while" infinitamente q se encarga de la gestion de los procesos, al recibir el proceso,
 dentro de este se extrae informaci�n relevante y salta a un switch, donde uno de los casos es 
@@ -368,3 +398,74 @@ rmp->used_quantums = 0;
 
 Aqu� mantenemos la logica original de balance, y agregamos el caso espec�fico que se propone en el documento
 de orientacion del proyecto.
+
+# 3. Resultados globales y discusión
+
+A continuación se resume el estado final de cada componente del proyecto:
+
+| Componente | Estado | Observaciones |
+|------------|--------|---------------|
+| Instalación y configuración de MINIX | ✅ Funciona completamente | Se logró emular 
+MINIX 3.4.0 sobre QEMU en arquitectura ARM |
+| Personalización del mensaje de bienvenida | ✅ Funciona completamente | El mensaje se 
+muestra correctamente al iniciar sesión |
+| Depuración del bug en `pthread_mutex_trylock` | ✅ Funciona completamente | El 
+programa de prueba retorna `EDEADLK` (11) y finaliza con `PASS` |
+| Implementación del comando `tree` | ✅ Funciona completamente | Muestra la jerarquía 
+de directorios con opciones `-d`, `--depth` y `--help` |
+| Penalización por uso intensivo de CPU | ✅ Funciona según lo esperado | Los procesos 
+CPU-bound ven reducida su prioridad tras consumir múltiples quantums |
+
+Las principales dificultades encontradas estuvieron relacionadas con la autenticación en 
+GitHub mediante tokens, la configuración del servicio SSH en MINIX para trabajar 
+remotamente, y la comprensión de la capa de compatibilidad entre `pthread_*` y `mthread_*`. 
+En todos los casos, se lograron soluciones funcionales.
+
+La modificación del scheduler requirió un análisis cuidadoso del código fuente de MINIX 
+para no introducir efectos no deseados en el balanceo de prioridades. La solución 
+implementada penaliza gradualmente a los procesos CPU-bound sin afectar drásticamente el 
+rendimiento general del sistema.
+
+# 4. Conclusiones
+
+El proyecto permitió cumplir con los objetivos planteados en la introducción. Se logró:
+
+- Personalizar el mensaje de bienvenida de MINIX modificando el archivo `/usr/src/etc/motd`, 
+lo que implicó comprender el proceso de compilación del sistema.
+- Depurar un bug crítico en `pthread_mutex_trylock`, identificando la causa raíz como una 
+llamada recursiva accidental en la capa de compatibilidad.
+- Implementar un comando `tree` funcional, utilizando llamadas al sistema como `opendir`, 
+`readdir`, `closedir` y `lstat` para evitar ciclos con enlaces simbólicos.
+- Modificar el planificador de MINIX para penalizar procesos CPU-bound mediante un contador 
+de quantums consumidos, logrando que los procesos interactivos mantengan prioridades más 
+altas.
+
+Como lecciones aprendidas, se comprendió la importancia de la capa de compatibilidad en 
+sistemas operativos, el funcionamiento de los mutex y las condiciones de carrera, y la 
+relevancia de una planificación justa en sistemas multitarea. La experiencia resultó 
+fundamental para consolidar conceptos teóricos a través de su implementación práctica.
+
+Como trabajo futuro, se propone extender el planificador para considerar también el uso de 
+memoria o la frecuencia de operaciones de entrada/salida como métricas adicionales para el 
+ajuste de prioridades.
+
+# 5. Referencias consultadas
+
+1. Tanenbaum, A. S., & Bos, H. (2015). *Modern Operating Systems* (4th ed.). Pearson.
+
+2. MINIX 3 Documentation. (s.f.). *The MINIX 3 Operating System*. Recuperado de 
+https://wiki.minix3.org/
+
+3. QEMU Documentation. (s.f.). *QEMU User Documentation*. Recuperado de 
+https://www.qemu.org/docs/master/
+
+4. MINIX 3 Source Code. (s.f.). *MINIX 3 Repository*. Recuperado de https://git.minix3.org/
+
+5. GNU C Library Documentation. (s.f.). *System Interface and Headers*. Recuperado de 
+https://www.gnu.org/software/libc/manual/
+
+6. Open Group. (2018). *POSIX.1-2017 Standard*. Recuperado de 
+https://pubs.opengroup.org/onlinepubs/9699919799/
+
+7. GitHub Guides. (s.f.). *Forking Projects*. Recuperado de 
+https://guides.github.com/activities/forking/
